@@ -1,0 +1,43 @@
+Super-Resolution three categories
+
+interpolation
+- basically using the mean/average of nearby pixels
+reconstruction
+- multiframe SR mostly
+- 
+learning
+- yang et. al 2010 "Image super-resolution via sparse representation"
+  - sparse dictionary
+  - isn't this a lookup table????
+  - We have some signal x that is representable by some Da0 where a0 is some small set of elements, and D is a dictionary. x = Da0
+  - y is almost equal to a function L applied to x. y = Lx = LDa0
+  - The goal is to make two dictionaries, Dh and Dl such that y = Dla0 and x = DHa0
+  - equation 4
+    - we're trying to find a set a of representations for y
+  - equation 7
+    - The goal is to find an a such that both 4, and 7 are satisfied
+    - the addition is putting a limit on the errors in overlap between the sparse sets
+  - Enforcing global reconstruction constraint
+    - some sort of gradient descent to ensure that the final image matches the original
+    - this part is just for mathy correctness me thinks. We can't possibly know S or H
+  - Training a single dictionary
+    - D is a dictionary with size K, where K is a hyper parameter?
+    - Z is the representation set (set of a)
+    - X is the original image
+  - Training with the images?
+
+
+X and Y denote high and low res images
+x, y denote image patches
+Bold uppercase D for dictionary
+Dh and Dl to dentoe high and low resolution image patches
+Bold lowercase letters denote vectors
+Plain uppercase letters denote matrices
+Plain lowercase are scalars
+
+
+Powerpoint on sparse coding and dictionary learning
+- julien mairal
+
+Github on Dictionary learning via LARS/LASSO
+- github.com/kchu25/Dictionary-learning
