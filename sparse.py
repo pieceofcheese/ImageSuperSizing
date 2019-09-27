@@ -2,6 +2,7 @@ import image_tools as img_tl
 import numpy as np
 import scipy as sp
 from sklearn.decomposition import MiniBatchDictionaryLearning
+from sklearn.linear_model import Ridge
 from sklearn.feature_extraction.image import extract_patches_2d
 from sklearn.feature_extraction.image import reconstruct_from_patches_2d
 import math
@@ -15,9 +16,9 @@ import matplotlib.pyplot as plt
 lowPatchSize = (3,3)
 highPatchSize = (6,6)
 representationSize = (3,3)
-atoms = 100
-lmbda = 1
-iterations = 100
+atoms = 512
+lmbda = 1/40000
+iterations = 500
 
 def train(image_paths):
 
@@ -91,7 +92,11 @@ def train(image_paths):
     
         result = trainer.fit(data).components_
         
-        np.save("models/sparse.npy", result)
+        resultHigh = result[:, :36]
+        resultLow = result[:, 36:]
+        
+        np.save("models/sparseHigh.npy", resultHigh)
+        np.save("models/sparseLow.npy", resultLow)
         
         inner_stats = trainer.inner_stats_
 
@@ -123,12 +128,64 @@ def convertImageDataToPatches(img, patchSize, stride=1):
     
     temp = img_tl.get_patches(img/255, patchSize, stride)
     temp = temp.reshape(temp.shape[0], -1)
-    return (temp - np.mean(temp, axis=0))/np.std(temp,axis=0)
+    return (temp - np.mean(temp, axis=1).reshape(temp.shape[0],1))
 
 
-def super_size(Dh, Dl, Y):
+def super_size(image_paths):
     """Dh: high resolution dictionary
        Dl: low resolution dictionary
        Y:  low resolution image
     """
+    # load model
+    Dh = np.load("models/sparseHigh.npy")
+    Dl = np.load("models/sparseLow.npy")
+    
+    print(Dh.shape)
+    print(Dl.shape)
+    
+    # load image
+    """ TEMP 1 image"""
+    Y = np.array(img_tl.importImage(image_paths[0]))
+    patches = img_tl.get_patches(Y[:,:]/255, lowPatchSize)
+    
+    """ temporarily only focus on one channel"""
+    # prep the image data
+    patches = patches.reshape(patches.shape[0], -1)
+    means = np.mean(patches, axis=1).reshape(patches.shape[0],1)
+    stdev = np.std(patches, axis=1).reshape(patches.shape[0],1)
+    patches = (patches - means)
+    
+    # find the a representation
+    Dlt = np.transpose(Dl)
+    Dht = np.transpose(Dh)
+    
+    reconstructed_patches = np.zeros((patches.shape[0], 36))
+    
+    for i in range(patches.shape[0]):
+        if i%1000 == 0:
+            print(".")
+        
+        patch = patches[i]
+        
+        trainer = Ridge(alpha = lmbda,
+                        max_iter = 500)
+        
+        trainer.fit(Dlt, patch)
+        
+        reconstructed_patches[i] = Dht.dot(trainer.coef_.reshape(512,1)).reshape(36)
+    
+    print(means.shape)
+    reconstructed_patches += means
+    reconstructed_patches = reconstructed_patches.reshape(img_tl.merge_tuples((patches.shape[0]), highPatchSize))
+    
+    patches = img_tl.get_patches(Y[:,:]/255, lowPatchSize)
+    fixedImage = img_tl.merge_patches(reconstructed_patches, (410 ,400), 2)
+    fixedImage *= 255
+    fixedImage = fixedImage.astype(np.uint8)
+    img_tl.save_as_image(fixedImage, "fixed.png")
+    
+    
+    
+        
+        
     

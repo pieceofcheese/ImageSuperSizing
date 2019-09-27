@@ -62,6 +62,24 @@ def get_patches(np_image, patch_size, stride=1):
         
     return patches
 
+    # should have it auto calculate stride
+def merge_patches(patches, image_size, stride=1):
+    image = np.zeros(image_size)
+    multiples = np.zeros(image_size)
+    multiples.astype(np.uint)
+    
+    height, width = image_size
+    patch_height, patch_width = patches.shape[1:]
+    
+    for i in range(0, height-patch_height + 1, stride):
+        for j in range(0, width-patch_width + 1, stride):
+            image[i:i+patch_height, j:j+patch_width] += patches[i//stride*((width - patch_width)//stride + 1) + j//stride]
+            multiples[i:i+patch_height, j:j+patch_width] += 1
+            
+    return image/multiples
+    
+    
+    
 def merge_tuples(*t):
     """ taken from https://stackoverflow.com/questions/14745199/how-to-merge-two-tuples-in-python/14745275#14745275"""
     return tuple(j for i in (t) for j in (i if isinstance(i, tuple) else (i,)))
