@@ -15,10 +15,9 @@ import matplotlib.pyplot as plt
 
 lowPatchSize = (3,3)
 highPatchSize = (6,6)
-representationSize = (3,3)
-atoms = 512
-lmbda = 1/40000
-iterations = 500
+atoms = 200
+lmbda = 1
+iterations = 300
 
 def train(image_paths):
 
@@ -36,18 +35,19 @@ def train(image_paths):
             sys.exit()
         
         # prepare images to high and low res patches
-        img_x, img_y = img.size
+        img_height, img_width = img.size
+        print(img.size)
         
-        if img_x % 2 == 1:
-            img = img.resize((img_x-1,img_y))
-            img_x -= 1
+        if img_height % 2 == 1:
+            img = img.resize((img_height-1,img_width))
+            img_height -= 1
         
-        if img_y % 2 == 1:
-            img = img.resize((img_x,img_y-1))
-            img_y -= 1
+        if img_width % 2 == 1:
+            img = img.resize((img_height,img_width-1))
+            img_width -= 1
         
         # ceil cause worried about 0 size
-        img_low = img.resize((math.ceil(img_x*0.5), math.ceil(img_y*0.5)))
+        img_low = img.resize((math.ceil(img_height*lowPatchSize[0]/highPatchSize[0]), math.ceil(img_width*lowPatchSize[1]/highPatchSize[1])))
         
         
         # convert to patches
@@ -92,8 +92,8 @@ def train(image_paths):
     
         result = trainer.fit(data).components_
         
-        resultHigh = result[:, :36]
-        resultLow = result[:, 36:]
+        resultHigh = result[:, :highPatchSize[0]*highPatchSize[1]]
+        resultLow = result[:, highPatchSize[0]*highPatchSize[1]:]
         
         np.save("models/sparseHigh.npy", resultHigh)
         np.save("models/sparseLow.npy", resultLow)
@@ -101,8 +101,8 @@ def train(image_paths):
         inner_stats = trainer.inner_stats_
 
     print(result.shape)
-    resultHigh = result[:, :36]
-    resultLow = result[:, 36:]
+    resultHigh = result[:, :highPatchSize[0]*highPatchSize[1]]
+    resultLow = result[:, highPatchSize[0]*highPatchSize[1]:]
     plt.figure(figsize=(4.2, 4))
     for i, comp in enumerate(resultHigh[:100]):
         plt.subplot(10, 10, i + 1)
@@ -159,7 +159,7 @@ def super_size(image_paths):
     Dlt = np.transpose(Dl)
     Dht = np.transpose(Dh)
     
-    reconstructed_patches = np.zeros((patches.shape[0], 36))
+    reconstructed_patches = np.zeros((patches.shape[0], highPatchSize[0]*highPatchSize[1]))
     
     for i in range(patches.shape[0]):
         if i%1000 == 0:
@@ -168,22 +168,28 @@ def super_size(image_paths):
         patch = patches[i]
         
         trainer = Ridge(alpha = lmbda,
-                        max_iter = 500)
+                        max_iter = 2)
         
         trainer.fit(Dlt, patch)
         
-        reconstructed_patches[i] = Dht.dot(trainer.coef_.reshape(512,1)).reshape(36)
+        reconstructed_patches[i] = Dht.dot(trainer.coef_.reshape(atoms,1)).reshape(highPatchSize[0]*highPatchSize[1])
     
     print(means.shape)
     reconstructed_patches += means
     reconstructed_patches = reconstructed_patches.reshape(img_tl.merge_tuples((patches.shape[0]), highPatchSize))
     
     patches = img_tl.get_patches(Y[:,:]/255, lowPatchSize)
-    fixedImage = img_tl.merge_patches(reconstructed_patches, (410 ,400), 2)
+    fixedImage, image2, image3 = img_tl.merge_patches(reconstructed_patches, (Y.shape[0]*2 ,Y.shape[1]*2), 2)
     fixedImage *= 255
     fixedImage = fixedImage.astype(np.uint8)
     img_tl.save_as_image(fixedImage, "fixed.png")
     
+    image2 *=255
+    image2 = image2.astype(np.uint8)
+    img_tl.save_as_image(image2, "fixed2.png")
+    image3 *=255
+    image3 = image3.astype(np.uint8)
+    img_tl.save_as_image(image3, "fixed3.png")
     
     
         
