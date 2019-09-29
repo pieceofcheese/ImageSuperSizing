@@ -65,8 +65,6 @@ def get_patches(np_image, patch_size, stride=1):
     # should have it auto calculate stride
 def merge_patches(patches, image_size, stride=1):
     image = np.zeros(image_size)
-    image2 = np.zeros(image_size)
-    image3 = np.zeros(image_size)
     
     multiples = np.zeros(image_size)
     multiples.astype(np.uint)
@@ -74,23 +72,12 @@ def merge_patches(patches, image_size, stride=1):
     height, width = image_size
     patch_height, patch_width = patches.shape[1:]
     
-    
-    
     for i in range(0, height-patch_height + 1, stride):
         for j in range(0, width-patch_width + 1, stride):
             image[i:i+patch_height, j:j+patch_width] += patches[i//stride*((width - patch_width)//stride + 1) + j//stride]
             multiples[i:i+patch_height, j:j+patch_width] += 1
     
-    for i in range(1, height-patch_height + 1, patch_height):
-        for j in range(1, width-patch_width + 1, patch_width):
-            image2[i-1:i+patch_height-1, j-1:j+patch_width-1] += patches[i//stride*((width - patch_width)//stride + 1) + j//stride]
-            
-            
-    for i in range(2, height-patch_height + 1, patch_height):
-        for j in range(2, width-patch_width + 1, patch_width):
-            image3[i-2:i+patch_height-2, j-2:j+patch_width-2] += patches[i//stride*((width - patch_width)//stride + 1) + j//stride]
-    
-    return image/multiples, image2, image3
+    return image/multiples
     
     
     

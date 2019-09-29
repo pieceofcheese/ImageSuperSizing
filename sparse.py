@@ -15,8 +15,9 @@ import matplotlib.pyplot as plt
 
 lowPatchSize = (3,3)
 highPatchSize = (6,6)
-atoms = 200
-lmbda = 1
+atoms = 50
+lmbda = 0.25
+lmbda2= 0.5
 iterations = 300
 
 def train(image_paths):
@@ -146,13 +147,13 @@ def super_size(image_paths):
     # load image
     """ TEMP 1 image"""
     Y = np.array(img_tl.importImage(image_paths[0]))
+    height, width = Y.shape
     patches = img_tl.get_patches(Y[:,:]/255, lowPatchSize)
     
     """ temporarily only focus on one channel"""
     # prep the image data
     patches = patches.reshape(patches.shape[0], -1)
     means = np.mean(patches, axis=1).reshape(patches.shape[0],1)
-    stdev = np.std(patches, axis=1).reshape(patches.shape[0],1)
     patches = (patches - means)
     
     # find the a representation
@@ -160,36 +161,99 @@ def super_size(image_paths):
     Dht = np.transpose(Dh)
     
     reconstructed_patches = np.zeros((patches.shape[0], highPatchSize[0]*highPatchSize[1]))
+    reconstructed_image = np.zeros((height*2 ,width*2))
+    reconstructed_multiples = np.zeros((height*2 ,width*2))
     
+    trainer = Ridge(alpha = lmbda2,
+                    max_iter = iterations)
+    stride = 2 # increment by highpatch/lowpatch size NOTE: program is designed for stride 2
+    # suppress warnings cause we use NAN as a mask
+    np.warnings.filterwarnings('ignore')
+    for i in range(0,height*2-highPatchSize[0]+1, stride): 
+    #for i in range(200,202, stride): 
+        if i%100 == 0:
+            print(".")
+            
+        for j in range(0, width*2-highPatchSize[1]+1, stride):
+        #for j in range(100, 132, stride):
+            
+            patch_i = i//stride*((width*2 - highPatchSize[1])//stride + 1) + j//stride
+            
+            patch = patches[patch_i]
+            
+            # generate overlap and mask for Dh
+            prev_overlap = np.copy(reconstructed_image[i:i+highPatchSize[0], j:j+highPatchSize[1]])
+            # remove the added means
+            prev_overlap = prev_overlap - means[patch_i]*reconstructed_multiples[i:i+highPatchSize[0], j:j+highPatchSize[1]]
+            # get the average patch result
+            prev_overlap = prev_overlap/reconstructed_multiples[i:i+highPatchSize[0], j:j+highPatchSize[1]]
+            # deal with nan values
+            prev_overlap[np.isnan(prev_overlap)] = 0
+            
+            mask = np.copy(prev_overlap)
+            mask[mask!=0] = 1
+            
+            prev_overlap=prev_overlap.reshape(-1)
+            mask = mask.reshape(-1)
+            
+            # create a y^ that contains both the patch to match and the overlap
+            
+            new_patch = np.concatenate((patch, prev_overlap))
+            
+            
+            # mask Dh
+            
+            masks = np.zeros(Dh.shape)
+            masks[:] = mask
+            masked_Dh = masks*Dh
+            
+            # create a D^
+            D_carrot = np.concatenate((Dl, masked_Dh),axis=1)
+            
+            #fit
+            D_carrot_t = np.transpose(D_carrot)
+            trainer.fit(D_carrot_t, new_patch)
+            
+            # reconstruct image
+            reconstructed_patch = Dht.dot(trainer.coef_.reshape(atoms,1)).reshape(highPatchSize) + means[patch_i]
+            reconstructed_image[i:i+highPatchSize[0], j:j+highPatchSize[1]] += reconstructed_patch
+            reconstructed_multiples[i:i+highPatchSize[0], j:j+highPatchSize[1]] += 1
+            
+            #reconstructed_image[i:i+highPatchSize[0]//2, j:j+highPatchSize[1]//2] = patch.reshape(lowPatchSize)
+    """
     for i in range(patches.shape[0]):
         if i%1000 == 0:
             print(".")
         
         patch = patches[i]
         
-        trainer = Ridge(alpha = lmbda,
-                        max_iter = 2)
+        # make previous overlap
+        
         
         trainer.fit(Dlt, patch)
         
-        reconstructed_patches[i] = Dht.dot(trainer.coef_.reshape(atoms,1)).reshape(highPatchSize[0]*highPatchSize[1])
+        reconstructed_patch = Dht.dot(trainer.coef_.reshape(atoms,1)).reshape(highPatchSize[0]*highPatchSize[1])
+        
     
     print(means.shape)
     reconstructed_patches += means
     reconstructed_patches = reconstructed_patches.reshape(img_tl.merge_tuples((patches.shape[0]), highPatchSize))
     
-    patches = img_tl.get_patches(Y[:,:]/255, lowPatchSize)
-    fixedImage, image2, image3 = img_tl.merge_patches(reconstructed_patches, (Y.shape[0]*2 ,Y.shape[1]*2), 2)
+    fixedImage= img_tl.merge_patches(reconstructed_patches, (height*2 ,width*2), 2)
+    
     fixedImage *= 255
     fixedImage = fixedImage.astype(np.uint8)
     img_tl.save_as_image(fixedImage, "fixed.png")
+    """
     
-    image2 *=255
-    image2 = image2.astype(np.uint8)
-    img_tl.save_as_image(image2, "fixed2.png")
-    image3 *=255
-    image3 = image3.astype(np.uint8)
-    img_tl.save_as_image(image3, "fixed3.png")
+    reconstructed_image /= reconstructed_multiples
+    reconstructed_image*=255
+    reconstructed_image[reconstructed_image<0] = 0
+    reconstructed_image[reconstructed_image>255] = 255
+    reconstructed_image = reconstructed_image.astype(np.uint8)
+    img_tl.save_as_image(reconstructed_image, "test.png")
+    
+    
     
     
         
