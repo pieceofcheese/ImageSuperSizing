@@ -15,9 +15,9 @@ import matplotlib.pyplot as plt
 
 lowPatchSize = (3,3)
 highPatchSize = (6,6)
-atoms = 50
+atoms = 200
 lmbda = 0.25
-lmbda2= 0.5
+lmbda2= 1
 iterations = 300
 
 def train(image_paths):
@@ -58,10 +58,6 @@ def train(image_paths):
         """ for now use only red channel """
         img = img[:,:,0]
         img_low = img_low[:,:,0]
-        
-        # print out the image for later testing
-        img_tl.save_as_image(img, "red.png")
-        img_tl.save_as_image(img_low, "red_low.png")
         """-----------------------------"""
         
         print(img.shape)
@@ -153,16 +149,39 @@ def super_size(image_paths):
     """ temporarily only focus on one channel"""
     # prep the image data
     patches = patches.reshape(patches.shape[0], -1)
+    
     means = np.mean(patches, axis=1).reshape(patches.shape[0],1)
     patches = (patches - means)
     
-    # find the a representation
-    Dlt = np.transpose(Dl)
-    Dht = np.transpose(Dh)
+    # construct fDl
+    mask1 = np.array([[0,1,0],[1,0,-1],[0,-1,0]])
+    mask2 = np.array([[0,1,0],[1,-2,1],[0,1,0]])
     
+    fDl = np.zeros((Dl.shape[0], 4))
+    
+    for i in range(0,Dl.shape[0]):
+    
+        atom = Dl[i].reshape(lowPatchSize)
+    
+        feat_1_2 = mask1*atom
+        feat_1 = np.sum(feat_1_2[1][:])
+        feat_2 = np.sum(feat_1_2[:][1])
+        
+        feat_3_4 = mask2*atom
+        feat_3 = np.sum(feat_3_4[1][:])
+        feat_4 = np.sum(feat_3_4[:][1])
+        
+        fDl[i] = np.array([feat_1, feat_2, feat_3, feat_4])
+        
+    
+    # fit to model prep
     reconstructed_patches = np.zeros((patches.shape[0], highPatchSize[0]*highPatchSize[1]))
     reconstructed_image = np.zeros((height*2 ,width*2))
     reconstructed_multiples = np.zeros((height*2 ,width*2))
+    
+    Dlt = np.transpose(Dl)
+    Dht = np.transpose(Dh)
+    
     
     trainer = Ridge(alpha = lmbda2,
                     max_iter = iterations)
@@ -180,6 +199,18 @@ def super_size(image_paths):
             patch_i = i//stride*((width*2 - highPatchSize[1])//stride + 1) + j//stride
             
             patch = patches[patch_i]
+            patch_3_3 = patch.reshape(lowPatchSize)
+            
+            # get the features out of the patch
+            feat_1_2 = mask1*patch_3_3
+            feat_1 = np.sum(feat_1_2[1][:])
+            feat_2 = np.sum(feat_1_2[:][1])
+            
+            feat_3_4 = mask2*patch_3_3
+            feat_3 = np.sum(feat_3_4[1][:])
+            feat_4 = np.sum(feat_3_4[:][1])
+            
+            features = np.array([feat_1, feat_2, feat_3, feat_4])
             
             # generate overlap and mask for Dh
             prev_overlap = np.copy(reconstructed_image[i:i+highPatchSize[0], j:j+highPatchSize[1]])
@@ -197,7 +228,7 @@ def super_size(image_paths):
             mask = mask.reshape(-1)
             
             # create a y^ that contains both the patch to match and the overlap
-            
+            #new_patch = np.concatenate((features, prev_overlap)) # for feat version
             new_patch = np.concatenate((patch, prev_overlap))
             
             
@@ -208,7 +239,8 @@ def super_size(image_paths):
             masked_Dh = masks*Dh
             
             # create a D^
-            D_carrot = np.concatenate((Dl, masked_Dh),axis=1)
+            D_carrot = np.concatenate((Dl, masked_Dh),axis=1) # for non feat version
+            #D_carrot = np.concatenate((fDl, masked_Dh),axis=1) # for feat version
             
             #fit
             D_carrot_t = np.transpose(D_carrot)
