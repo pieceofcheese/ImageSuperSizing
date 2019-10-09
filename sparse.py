@@ -198,9 +198,7 @@ def super_size(image_paths):
             reconstruction[:,:,channel] = reconstructed_image
             
         dirs = image_path.split(os.path.sep)
-        print(dirs)
         fileName = dirs[-1]
-        print(fileName)
         
         img_tl.save_as_image(reconstruction, "2x_" + fileName)
 

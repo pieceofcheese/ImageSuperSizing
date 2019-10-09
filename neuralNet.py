@@ -3,6 +3,7 @@ import numpy as np
 import scipy as sp
 from sklearn.neural_network import MLPRegressor
 import sys
+import os
 from joblib import dump, load
 
 # import warnings filter
@@ -90,10 +91,8 @@ def super_size(image_paths):
             result[:,:,channel] = predicted_image
          
         dirs = image_path.split(os.path.sep)
-        print(dirs)
         fileName = dirs[-1]
-        print(fileName)
         
-        img_tl.save_as_image(reconstruction, "2x_" + fileName)
+        img_tl.save_as_image(result, "2x_" + fileName)
         
     

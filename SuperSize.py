@@ -8,6 +8,7 @@ import image_tools as img_tl
 helpText = """SuperSize.py [options] image
     -h Prints help message
     -m Which Model to use
+    -d Directory to look for images
     
     Models:
         sparse : Based on Jiachoa Yang et. al Sparse dictionary model
@@ -19,7 +20,7 @@ def main(argv):
     model = "neural"
     
     try:
-        opts, args = getopt.getopt(argv,"hm:")
+        opts, args = getopt.getopt(argv,"hm:d:")
     except getopt.GetoptError:
         print("SuperSize.py [options] image")
         sys.exit(2)
@@ -31,18 +32,18 @@ def main(argv):
             sys.exit()
         elif opt == "-m":
             model = arg
+        elif opt == "-d":
+            images += img_tl.get_images(arg)
     
     images = []
     # handle arguments
     if len(args) > 1:
         for arg in args:
-            images += img_tl.get_images(arg)
+            images.append(arg)
     elif(len(args)>0):
         images += args
     else:
         sys.exit()
-    
-    print(images)
     
     if model == "sparse":
         # do model

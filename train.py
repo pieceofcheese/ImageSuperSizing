@@ -8,6 +8,7 @@ import image_tools as img_tl
 helpText = """train.py [options] image_folder
     -h Prints help message
     -m Which Model to train
+    -d Directory to look for images
     
     Models:
         sparse : Based on Jiachoa Yang et. al Sparse dictionary model
@@ -19,7 +20,7 @@ def main(argv):
     model = "neural"
     
     try:
-        opts, args = getopt.getopt(argv,"hm:")
+        opts, args = getopt.getopt(argv,"hm:d:")
     except getopt.GetoptError:
         print("train.py [options] image_folder")
         sys.exit(2)
@@ -31,12 +32,14 @@ def main(argv):
             sys.exit()
         elif opt == "-m":
             model = arg
+        elif opt == "-d":
+            model += img_tl.get_images(arg)
     
     images = []
     # handle arguments
     if len(args) > 0:
         for arg in args:
-            images += img_tl.get_images(arg)
+            images.append(arg)
     else:
         images = img_tl.get_images()
     
