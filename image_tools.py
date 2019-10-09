@@ -1,6 +1,7 @@
 from PIL import Image
 import os
 import numpy as np
+import math
 
 ImagePath = "images/"
 
@@ -99,6 +100,35 @@ def get_patch(image, coord_start, height, width):
     patch = array(patch)
     return patch
 
+def halfImageResolutionForTraining(img, lowPatchSize, highPatchSize):
+    # prepare images to high and low res patches
+    img_height, img_width = img.size
+    
+    if img_height % 2 == 1:
+        img = img.resize((img_height-1,img_width))
+        img_height -= 1
+    
+    if img_width % 2 == 1:
+        img = img.resize((img_height,img_width-1))
+        img_width -= 1
+    
+    # ceil cause worried about 0 size
+    img_low = img.resize(
+        (math.ceil(img_height*lowPatchSize[0]/highPatchSize[0]), 
+        math.ceil(img_width*lowPatchSize[1]/highPatchSize[1])))
+        
+    return img_low,img
+    
+def convertImageDataToPatches(img, patchSize, stride=1):
+    """ Converts image to a machine learning friendly format
+        Does this by converting 256 bit colour to a scale of 0 to 1,
+         turns it into patches with mean subtracted, and divides by std. dev
+    """
+    
+    temp = get_patches(img/255, patchSize, stride)
+    temp = temp.reshape(temp.shape[0], -1)
+    return (temp - np.mean(temp, axis=1).reshape(temp.shape[0],1))
+    
 class xyOutOfBoundsError(Exception):
     def __init__(self, x, y, maxX, maxY):
         self.message("Coordinates of " + str(x) + "," + str(y) + " are out of bounds\n"

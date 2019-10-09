@@ -1,17 +1,22 @@
 
 import sys, getopt
 import sparse
+import neuralNet
 import image_tools as img_tl
 
 
 helpText = """train.py [options] image_folder
     -h Prints help message
     -m Which Model to train
+    
+    Models:
+        sparse : Based on Jiachoa Yang et. al Sparse dictionary model
+        neural : a neural network based model
 """
 
 def main(argv):
     
-    model = "sparse"
+    model = "neural"
     
     try:
         opts, args = getopt.getopt(argv,"hm:")
@@ -38,7 +43,8 @@ def main(argv):
     if model == "sparse":
         # do model
         sparse.train(images)
-        
+    elif model == "neural":
+        neuralNet.train(images)
     else:
         # do a default model
         print("Error: you did not select an existing model")

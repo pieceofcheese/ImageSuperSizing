@@ -35,8 +35,7 @@ def train(image_paths):
             print("Error, an image could not be found in the images directory. Did you move it while the machine was training?")
             sys.exit()
         
-        img_height, img_width = img.size
-        img_low,img = halfImageResolutionForTraining(img)
+        img_low,img = img_tl.halfImageResolutionForTraining(img, lowPatchSize, highPatchSize)
         img = np.array(img)
         img_low = np.array(img_low)
         
@@ -47,10 +46,10 @@ def train(image_paths):
         for channel in range(img.shape[2]):
         
             # convert to patches
-            data_high = img[:,:,channel]
-            data_low = img_low[:,:,channel]
-            high_data = convertImageDataToPatches(data_high, highPatchSize, 2)
-            low_data = convertImageDataToPatches(data_low, lowPatchSize)
+            high_data = img[:,:,channel]
+            low_data = img_low[:,:,channel]
+            high_data = img_tl.convertImageDataToPatches(high_data, highPatchSize, 2)
+            low_data = img_tl.convertImageDataToPatches(low_data, lowPatchSize)
             
             high_data_size = high_data.shape[1]
             low_data_size = low_data.shape[1]
@@ -108,26 +107,7 @@ def train(image_paths):
         plt.yticks(())
     plt.show()
     
-def halfImageResolutionForTraining(img):
-    # prepare images to high and low res patches
-    img_height, img_width = img.size
-    
-    if img_height % 2 == 1:
-        img = img.resize((img_height-1,img_width))
-        img_height -= 1
-    
-    if img_width % 2 == 1:
-        img = img.resize((img_height,img_width-1))
-        img_width -= 1
-    
-    # ceil cause worried about 0 size
-    img_low = img.resize(
-        (math.ceil(img_height*lowPatchSize[0]/highPatchSize[0]), 
-        math.ceil(img_width*lowPatchSize[1]/highPatchSize[1])))
-        
-    return img_low,img
 
-    
 def convertImageDataToPatches(img, patchSize, stride=1):
     """ Converts image to a machine learning friendly format
         Does this by converting 256 bit colour to a scale of 0 to 1,
@@ -191,12 +171,12 @@ def super_size(image_paths):
                         means[patch_i])
                     
                     # create a y^ that contains both the patch to match and the overlap
-                    new_patch = np.concatenate((patch, prev_overlap))
+                    new_patch = np.concatenate((patch, 2*prev_overlap))
                     
                     # mask Dh
                     masks = np.zeros(Dh.shape)
                     masks[:] = mask
-                    masked_Dh = masks*Dh
+                    masked_Dh = masks*Dh*2
                     
                     # create a D^
                     D_carrot = np.concatenate((Dl, masked_Dh),axis=1)

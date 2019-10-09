@@ -1,6 +1,7 @@
 from PIL import Image
 from image_tools import save_as_image
 from image_tools import get_images
+from image_tools import halfImageResolutionForTraining
 import sys, getopt
 import numpy as np
 
@@ -37,11 +38,12 @@ def main(argv):
         print(name)
 
         img = Image.open(image)
-
+        img, x = halfImageResolutionForTraining(img, (3,3), (6,6))
         img = np.array(img)
         save_as_image(img[:,:,0], root+name+"_red.png")
         save_as_image(img[:,:,1], root+name+"_green.png")
         save_as_image(img[:,:,2], root+name+"_blue.png")
+        save_as_image(img[:,:], root+name+"_half.png")
             
 if __name__== "__main__":
     main(sys.argv[1:])
